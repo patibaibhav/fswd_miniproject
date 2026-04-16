@@ -1,16 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Edit, Calendar, Users } from 'lucide-react';
-import { attendance as initialAttendance } from '../data/mockData';
+import { api } from '../utils/api';
 
 function AttendanceManagement() {
-  const [attendance, setAttendance] = useState(initialAttendance);
+  const [attendance, setAttendance] = useState([]);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentAttendance, setCurrentAttendance] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     present: 0,
     absent: 0,
     leave: 0,
   });
+
+  useEffect(() => {
+    fetchAttendance();
+  }, []);
+
+  const fetchAttendance = async () => {
+    try {
+      const data = await api.get('/attendance?year=2026&month=3');
+      setAttendance(data);
+    } catch (err) {
+      console.error('Fetch attendance error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const openEditModal = (att) => {
     setCurrentAttendance(att);
@@ -22,27 +38,46 @@ function AttendanceManagement() {
     setIsEditModalOpen(true);
   };
 
-  const handleUpdateAttendance = () => {
+  const handleUpdateAttendance = async () => {
     if (!currentAttendance) return;
-    setAttendance(
-      attendance.map((att) =>
-        att.employeeId === currentAttendance.employeeId
-          ? {
-              ...att,
-              present: formData.present,
-              absent: formData.absent,
-              leave: formData.leave,
-            }
-          : att
-      )
-    );
-    setIsEditModalOpen(false);
-    setCurrentAttendance(null);
+    try {
+      await api.put(`/attendance/${currentAttendance.employeeId}`, {
+        present: formData.present,
+        absent: formData.absent,
+        leave: formData.leave,
+        year: 2026,
+        month: 3,
+      });
+      setAttendance(
+        attendance.map((att) =>
+          att.employeeId === currentAttendance.employeeId
+            ? {
+                ...att,
+                present: formData.present,
+                absent: formData.absent,
+                leave: formData.leave,
+              }
+            : att
+        )
+      );
+      setIsEditModalOpen(false);
+      setCurrentAttendance(null);
+    } catch (err) {
+      alert(err.message || 'Failed to update attendance');
+    }
   };
 
   const totalPresent = attendance.reduce((sum, att) => sum + att.present, 0);
   const totalAbsent = attendance.reduce((sum, att) => sum + att.absent, 0);
   const totalLeave = attendance.reduce((sum, att) => sum + att.leave, 0);
+
+  if (loading) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading attendance...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">

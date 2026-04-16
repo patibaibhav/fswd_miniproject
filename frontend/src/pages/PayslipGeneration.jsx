@@ -1,19 +1,43 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Download, Eye, DollarSign } from 'lucide-react';
-import { payslips } from '../data/mockData';
+import { api } from '../utils/api';
 
 function PayslipGeneration() {
   const location = useLocation();
   const isEmployee = location.pathname.startsWith('/employee');
+  const [payslips, setPayslips] = useState([]);
   const [selectedPayslip, setSelectedPayslip] = useState(null);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  // If employee, show only their payslip (John Doe for demo)
-  const displayPayslips = isEmployee
-    ? payslips.filter((p) => p.employeeName === 'John Doe')
-    : payslips;
+  useEffect(() => {
+    fetchPayslips();
+  }, []);
+
+  const fetchPayslips = async () => {
+    try {
+      let data;
+      if (isEmployee) {
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        // Get employee code from the employees endpoint using employeeId
+        if (user.employeeId) {
+          const emp = await api.get(`/employees/by-uuid/${user.employeeId}`);
+          data = await api.get(`/payslips/employee/${emp.id}`);
+        } else {
+          data = await api.get('/payslips?year=2026&month=3');
+        }
+      } else {
+        data = await api.get('/payslips?year=2026&month=3');
+      }
+      setPayslips(data);
+    } catch (err) {
+      console.error('Fetch payslips error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDownloadPayslip = (payslip) => {
     setToast(`Downloading payslip for ${payslip.employeeName}`);
@@ -24,6 +48,14 @@ function PayslipGeneration() {
     setSelectedPayslip(payslip);
     setIsViewModalOpen(true);
   };
+
+  if (loading) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading payslips...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -58,7 +90,7 @@ function PayslipGeneration() {
               </tr>
             </thead>
             <tbody>
-              {displayPayslips.map((payslip) => (
+              {payslips.map((payslip) => (
                 <tr key={payslip.employeeId}>
                   <td className="td-id">{payslip.employeeId}</td>
                   <td className="td-name">{payslip.employeeName}</td>

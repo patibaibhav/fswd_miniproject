@@ -1,13 +1,14 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit, Trash2, Search } from 'lucide-react';
-import { employees as initialEmployees } from '../data/mockData';
+import { api } from '../utils/api';
 
 function EmployeeManagement() {
-  const [employees, setEmployees] = useState(initialEmployees);
+  const [employees, setEmployees] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -17,6 +18,21 @@ function EmployeeManagement() {
     status: 'Active',
   });
 
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
+
+  const fetchEmployees = async () => {
+    try {
+      const data = await api.get('/employees');
+      setEmployees(data);
+    } catch (err) {
+      console.error('Fetch employees error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const filteredEmployees = employees.filter(
     (emp) =>
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -24,47 +40,54 @@ function EmployeeManagement() {
       emp.id.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleAddEmployee = () => {
-    const newEmployee = {
-      id: `EMP${String(employees.length + 1).padStart(3, '0')}`,
-      name: formData.name,
-      email: formData.email,
-      department: formData.department,
-      position: formData.position,
-      salary: Number(formData.salary),
-      status: formData.status,
-      joiningDate: new Date().toISOString().split('T')[0],
-    };
-    setEmployees([...employees, newEmployee]);
-    setIsAddModalOpen(false);
-    resetForm();
+  const handleAddEmployee = async () => {
+    try {
+      const newEmployee = await api.post('/employees', {
+        name: formData.name,
+        email: formData.email,
+        department: formData.department,
+        position: formData.position,
+        salary: Number(formData.salary),
+        status: formData.status,
+      });
+      setEmployees([...employees, newEmployee]);
+      setIsAddModalOpen(false);
+      resetForm();
+    } catch (err) {
+      alert(err.message || 'Failed to add employee');
+    }
   };
 
-  const handleEditEmployee = () => {
+  const handleEditEmployee = async () => {
     if (!currentEmployee) return;
-    setEmployees(
-      employees.map((emp) =>
-        emp.id === currentEmployee.id
-          ? {
-              ...emp,
-              name: formData.name,
-              email: formData.email,
-              department: formData.department,
-              position: formData.position,
-              salary: Number(formData.salary),
-              status: formData.status,
-            }
-          : emp
-      )
-    );
-    setIsEditModalOpen(false);
-    setCurrentEmployee(null);
-    resetForm();
+    try {
+      const updated = await api.put(`/employees/${currentEmployee.id}`, {
+        name: formData.name,
+        email: formData.email,
+        department: formData.department,
+        position: formData.position,
+        salary: Number(formData.salary),
+        status: formData.status,
+      });
+      setEmployees(
+        employees.map((emp) => (emp.id === currentEmployee.id ? updated : emp))
+      );
+      setIsEditModalOpen(false);
+      setCurrentEmployee(null);
+      resetForm();
+    } catch (err) {
+      alert(err.message || 'Failed to update employee');
+    }
   };
 
-  const handleDeleteEmployee = (id) => {
+  const handleDeleteEmployee = async (id) => {
     if (confirm('Are you sure you want to delete this employee?')) {
-      setEmployees(employees.filter((emp) => emp.id !== id));
+      try {
+        await api.delete(`/employees/${id}`);
+        setEmployees(employees.filter((emp) => emp.id !== id));
+      } catch (err) {
+        alert(err.message || 'Failed to delete employee');
+      }
     }
   };
 
@@ -155,6 +178,14 @@ function EmployeeManagement() {
     </div>
   );
 
+  if (loading) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading employees...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="page-container">
       <div className="page-header">
@@ -206,7 +237,7 @@ function EmployeeManagement() {
                   <td className="td-muted">{employee.email}</td>
                   <td className="td-muted">{employee.department}</td>
                   <td className="td-muted">{employee.position}</td>
-                  <td className="td-accent">${employee.salary.toLocaleString()}</td>
+                  <td className="td-accent">${Number(employee.salary).toLocaleString()}</td>
                   <td>
                     <span className={`status-badge ${employee.status === 'Active' ? 'active' : 'inactive'}`}>
                       {employee.status}
