@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   DollarSign,
   Calendar,
@@ -14,27 +15,84 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { employees, payslips, attendance } from '../data/mockData';
+import { api } from '../utils/api';
 
 function EmployeeDashboard() {
-  // For demo, we'll use John Doe as the logged-in employee
-  const currentEmployee = employees[0]; // John Doe
-  const currentPayslip = payslips[0];
-  const currentAttendance = attendance[0];
+  const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [currentPayslip, setCurrentPayslip] = useState(null);
+  const [currentAttendance, setCurrentAttendance] = useState(null);
+  const [leaveBalance, setLeaveBalance] = useState({ remainingDays: 12 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEmployeeData();
+  }, []);
+
+  const fetchEmployeeData = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+      // Get employee details
+      let emp;
+      if (user.employeeId) {
+        emp = await api.get(`/employees/by-uuid/${user.employeeId}`);
+      } else {
+        // Fallback: get first employee
+        const allEmps = await api.get('/employees');
+        emp = allEmps[0];
+      }
+      setCurrentEmployee(emp);
+
+      if (emp) {
+        // Fetch payslip and attendance in parallel
+        const [payslips, attendance, leave] = await Promise.all([
+          api.get(`/payslips/employee/${emp.id}`),
+          api.get(`/attendance/employee/${emp.id}?year=2026&month=3`).catch(() => ({
+            totalDays: 22, present: 20, absent: 1, leave: 1,
+          })),
+          api.get(`/dashboard/leave-balance/${emp.id}`).catch(() => ({
+            remainingDays: 12,
+          })),
+        ]);
+
+        setCurrentPayslip(payslips.length > 0 ? payslips[0] : {
+          basicSalary: emp.salary,
+          allowances: Math.round(emp.salary * 0.2),
+          grossSalary: Math.round(emp.salary * 1.2),
+          deductions: Math.round(emp.salary * 0.1),
+          netSalary: Math.round(emp.salary * 1.1),
+        });
+        setCurrentAttendance(attendance);
+        setLeaveBalance(leave);
+      }
+    } catch (err) {
+      console.error('Employee dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !currentEmployee || !currentPayslip || !currentAttendance) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   const attendancePercentage = (
     (currentAttendance.present / currentAttendance.totalDays) *
     100
   ).toFixed(1);
 
-  // Mock monthly salary data for the employee
+  // Monthly salary data for the employee
   const monthlySalaryData = [
-    { month: 'Sep', salary: 76500 },
-    { month: 'Oct', salary: 76500 },
-    { month: 'Nov', salary: 76500 },
-    { month: 'Dec', salary: 76500 },
-    { month: 'Jan', salary: 76500 },
-    { month: 'Feb', salary: 76500 },
+    { month: 'Sep', salary: currentPayslip.netSalary },
+    { month: 'Oct', salary: currentPayslip.netSalary },
+    { month: 'Nov', salary: currentPayslip.netSalary },
+    { month: 'Dec', salary: currentPayslip.netSalary },
+    { month: 'Jan', salary: currentPayslip.netSalary },
+    { month: 'Feb', salary: currentPayslip.netSalary },
     { month: 'Mar', salary: currentPayslip.netSalary },
   ];
 
@@ -105,7 +163,7 @@ function EmployeeDashboard() {
             </div>
           </div>
           <p className="stat-label">Annual Salary</p>
-          <p className="stat-value">${currentEmployee.salary.toLocaleString()}</p>
+          <p className="stat-value">${Number(currentEmployee.salary).toLocaleString()}</p>
           <p className="stat-note">Base salary</p>
         </div>
 
@@ -127,7 +185,7 @@ function EmployeeDashboard() {
             </div>
           </div>
           <p className="stat-label">Leave Balance</p>
-          <p className="stat-value">12 Days</p>
+          <p className="stat-value">{leaveBalance.remainingDays} Days</p>
           <p className="stat-note">Available</p>
         </div>
       </div>

@@ -1,24 +1,61 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Calculator, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
-import { salaryData as initialSalaryData } from '../data/mockData';
+import { api } from '../utils/api';
 
 function SalaryCalculation() {
-  const [salaryData] = useState(initialSalaryData);
+  const [salaryData, setSalaryData] = useState([]);
   const [calculating, setCalculating] = useState(false);
   const [toast, setToast] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleCalculateSalary = () => {
+  useEffect(() => {
+    fetchPayroll();
+  }, []);
+
+  const fetchPayroll = async () => {
+    try {
+      const data = await api.get('/payroll?year=2026&month=3');
+      setSalaryData(data.map(item => ({
+        ...item,
+        basicSalary: parseFloat(item.basicSalary),
+        allowances: parseFloat(item.allowances),
+        grossSalary: parseFloat(item.grossSalary),
+        deductions: parseFloat(item.deductions),
+        netSalary: parseFloat(item.netSalary),
+      })));
+    } catch (err) {
+      console.error('Fetch payroll error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCalculateSalary = async () => {
     setCalculating(true);
-    setTimeout(() => {
+    try {
+      const result = await api.post('/payroll/calculate', { year: 2026, month: 3 });
+      setToast(result.message || 'Salary calculated successfully for all employees!');
+      // Refresh payroll data
+      await fetchPayroll();
+    } catch (err) {
+      setToast('Failed to calculate salary: ' + (err.message || 'Unknown error'));
+    } finally {
       setCalculating(false);
-      setToast('Salary calculated successfully for all employees!');
       setTimeout(() => setToast(null), 3000);
-    }, 1500);
+    }
   };
 
   const totalGrossSalary = salaryData.reduce((sum, s) => sum + s.grossSalary, 0);
   const totalDeductions = salaryData.reduce((sum, s) => sum + s.deductions, 0);
   const totalNetSalary = salaryData.reduce((sum, s) => sum + s.netSalary, 0);
+
+  if (loading) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading payroll...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
