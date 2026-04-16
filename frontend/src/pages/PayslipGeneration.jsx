@@ -169,7 +169,7 @@ function PayslipGeneration() {
                 </div>
                 <div className="info-cell">
                   <p className="info-cell-label">Payment Date</p>
-                  <p className="info-cell-value">March 31, 2026</p>
+                  <p className="info-cell-value">{selectedPayslip.month} 30, {selectedPayslip.year}</p>
                 </div>
               </div>
 

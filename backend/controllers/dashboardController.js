@@ -12,9 +12,9 @@ const getStats = async (req, res) => {
     );
     const totalEmployees = parseInt(empResult.rows[0].count);
 
-    // Total salary (sum of all active employees' annual salary)
+    // Total salary (sum of all active employees' monthly salary)
     const salaryResult = await query(
-      "SELECT COALESCE(SUM(annual_salary), 0) AS total FROM employees WHERE status = 'Active'"
+      "SELECT COALESCE(SUM(annual_salary) / 12, 0) AS total FROM employees WHERE status = 'Active'"
     );
     const totalSalary = parseFloat(salaryResult.rows[0].total);
 

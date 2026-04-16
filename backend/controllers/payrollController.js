@@ -75,7 +75,7 @@ const calculatePayroll = async (req, res) => {
     // Calculate salary for each employee
     // Formula: basic = annual_salary, allowances = 20%, deductions = 10%
     for (const emp of employees.rows) {
-      const basicSalary = parseFloat(emp.annual_salary);
+      const basicSalary = Math.round(parseFloat(emp.annual_salary) / 12);
       const allowances = Math.round(basicSalary * 0.2);
       const deductions = Math.round(basicSalary * 0.1);
 

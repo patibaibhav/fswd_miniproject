@@ -1,0 +1,85 @@
+/* ─── Sign Up Page Extras ─── */
+/* Inherits all login-page styles; these are sign-up-specific additions */
+
+/* Feature icons inside the dot-box on the left panel */
+.feature-icon {
+  color: var(--accent);
+}
+
+/* Alert banners */
+.signup-alert {
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius);
+  margin-bottom: 0.25rem;
+  font-size: 0.875rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  animation: slideUp 0.3s ease;
+}
+
+.signup-alert-error {
+  color: var(--danger-light);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.signup-alert-success {
+  color: var(--success);
+  background: rgba(52, 211, 153, 0.1);
+  border: 1px solid rgba(52, 211, 153, 0.2);
+}
+
+/* Password toggle button */
+.password-toggle-btn {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.password-toggle-btn:hover {
+  color: var(--accent);
+}
+
+/* Password strength checks */
+.password-checks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.password-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.75rem;
+  color: var(--text-dimmed);
+  transition: color 0.2s;
+}
+
+.password-check.pass {
+  color: var(--success);
+}
+
+/* Footer link row */
+.signup-footer {
+  text-align: center;
+  font-size: 0.875rem;
+  color: var(--text-muted);
+  padding-top: 0.25rem;
+}
+
+.signup-footer .link-btn {
+  font-weight: 600;
+}

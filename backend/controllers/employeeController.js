@@ -2,6 +2,7 @@
 // Demonstrates: Full CRUD REST API, PostgreSQL JOINs, async/await (Modules 5 & 6)
 
 const { query } = require('../config/db');
+const bcrypt = require('bcryptjs');
 
 // GET /api/employees — List all employees (with department & position names)
 const getAllEmployees = async (req, res) => {
@@ -132,6 +133,40 @@ const createEmployee = async (req, res) => {
       [employeeCode, name, email, departmentId, positionId, salary, status || 'Active']
     );
 
+    const employeeUuid = result.rows[0].id;
+
+    // --- Auto-create Employee User Account ---
+    const defaultPassword = `${employeeCode}@123`;
+    const salt = await bcrypt.genSalt(10);
+    const passwordHash = await bcrypt.hash(defaultPassword, salt);
+
+    // Get role ID for 'employee'
+    const roleResult = await query("SELECT id FROM roles WHERE name = 'employee'");
+    let roleId = 2; // Fallback
+    if (roleResult.rows.length > 0) {
+      roleId = roleResult.rows[0].id;
+    }
+
+    // Insert into users table
+    await query(
+      `INSERT INTO users (email, password_hash, role_id, employee_id)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (email) DO NOTHING`,
+      [email, passwordHash, roleId, employeeUuid]
+    );
+
+    // --- Auto-create Prorated Attendance for current month ---
+    const today = new Date();
+    const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+    const remainingDays = daysInMonth - today.getDate() + 1;
+    
+    await query(
+      `INSERT INTO attendance_monthly (employee_id, pay_year, pay_month, total_days, present_days, absent_days, leave_days)
+       VALUES ($1, $2, $3, $4, $4, 0, 0)`,
+      [employeeUuid, today.getFullYear(), today.getMonth() + 1, remainingDays]
+    );
+    // -----------------------------------------
+
     // Return the full employee object
     const newEmployee = {
       id: result.rows[0].employee_code,
@@ -217,14 +252,28 @@ const updateEmployee = async (req, res) => {
 const deleteEmployee = async (req, res) => {
   try {
     const { id } = req.params;
+    
+    // Get the employee's internal UUID
+    const empResult = await query(
+      'SELECT id FROM employees WHERE employee_code = $1',
+      [id]
+    );
+
+    if (empResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Employee not found.' });
+    }
+
+    const empUuid = empResult.rows[0].id;
+
+    // Manually cascade delete dependent records (users & payroll_items)
+    // attendance_monthly and leave_balances already have ON DELETE CASCADE in schema
+    await query('DELETE FROM users WHERE employee_id = $1', [empUuid]);
+    await query('DELETE FROM payroll_items WHERE employee_id = $1', [empUuid]);
+
     const result = await query(
       'DELETE FROM employees WHERE employee_code = $1 RETURNING id',
       [id]
     );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Employee not found.' });
-    }
 
     res.json({ message: 'Employee deleted successfully.' });
   } catch (err) {

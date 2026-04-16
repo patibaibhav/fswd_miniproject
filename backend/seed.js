@@ -140,7 +140,7 @@ const seed = async () => {
       // Create payroll items for all active employees
       for (const emp of employees) {
         if (emp.status === 'Active') {
-          const basicSalary = emp.salary;
+          const basicSalary = Math.round(emp.salary / 12);
           const allowances = Math.round(basicSalary * 0.2);
           const deductions = Math.round(basicSalary * 0.1);
 
@@ -185,21 +185,26 @@ const seed = async () => {
       ['admin@company.com', passwordHash, roleMap['admin']]
     );
 
-    // Employee user (linked to John Doe - EMP001)
-    await client.query(
-      `INSERT INTO users (email, password_hash, role_id, employee_id)
-       VALUES ($1, $2, $3, $4)
-       ON CONFLICT (email) DO UPDATE SET password_hash = $2`,
-      ['employee@company.com', passwordHash, roleMap['employee'], employeeIds['EMP001']]
-    );
+    // Employee users (for all dummy employees)
+    for (const emp of employees) {
+      const empPassword = `${emp.code}@123`;
+      const empPasswordHash = await bcrypt.hash(empPassword, salt);
+      
+      await client.query(
+        `INSERT INTO users (email, password_hash, role_id, employee_id)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (email) DO UPDATE SET password_hash = $2`,
+        [emp.email, empPasswordHash, roleMap['employee'], employeeIds[emp.code]]
+      );
+    }
 
     await client.query('COMMIT');
 
     console.log('\n✅ Database seeded successfully!');
     console.log('──────────────────────────────────');
     console.log('Demo Login Credentials:');
-    console.log('  Admin:    admin@company.com / password123');
-    console.log('  Employee: employee@company.com / password123');
+    console.log('  Admin:          admin@company.com / password123');
+    console.log('  Any Employee:   [email] / [EMP_CODE]@123  (e.g. john.doe@company.com / EMP001@123)');
     console.log('──────────────────────────────────');
   } catch (err) {
     await client.query('ROLLBACK');

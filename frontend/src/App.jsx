@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import LoginPage from './pages/LoginPage';
+import SignUpPage from './pages/SignUpPage';
 import DashboardLayout from './components/DashboardLayout';
 import AdminDashboard from './pages/AdminDashboard';
 import EmployeeManagement from './pages/EmployeeManagement';
@@ -14,6 +15,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<AdminDashboard />} />
           <Route path="employees" element={<EmployeeManagement />} />

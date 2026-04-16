@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { DollarSign, Mail, Lock } from 'lucide-react';
 import { api } from '../utils/api';
 import '../styles/LoginPage.css';
@@ -171,6 +171,13 @@ function LoginPage() {
                 <span style={{ color: 'var(--text-white)', fontWeight: 500 }}>
                   Password: password123
                 </span>
+              </p>
+            </div>
+
+            <div className="signup-footer" style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)', paddingTop: '0.25rem' }}>
+              <p>
+                Don't have an account?{' '}
+                <Link to="/signup" className="link-btn" style={{ fontWeight: 600 }}>Sign Up</Link>
               </p>
             </div>
           </form>

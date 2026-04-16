@@ -20,6 +20,7 @@ import { api } from '../utils/api';
 function EmployeeDashboard() {
   const [currentEmployee, setCurrentEmployee] = useState(null);
   const [currentPayslip, setCurrentPayslip] = useState(null);
+  const [allPayslips, setAllPayslips] = useState([]);
   const [currentAttendance, setCurrentAttendance] = useState(null);
   const [leaveBalance, setLeaveBalance] = useState({ remainingDays: 12 });
   const [loading, setLoading] = useState(true);
@@ -55,12 +56,13 @@ function EmployeeDashboard() {
           })),
         ]);
 
+        setAllPayslips(payslips);
         setCurrentPayslip(payslips.length > 0 ? payslips[0] : {
-          basicSalary: emp.salary,
-          allowances: Math.round(emp.salary * 0.2),
-          grossSalary: Math.round(emp.salary * 1.2),
-          deductions: Math.round(emp.salary * 0.1),
-          netSalary: Math.round(emp.salary * 1.1),
+          basicSalary: 0,
+          allowances: 0,
+          grossSalary: 0,
+          deductions: 0,
+          netSalary: 0,
         });
         setCurrentAttendance(attendance);
         setLeaveBalance(leave);
@@ -85,16 +87,25 @@ function EmployeeDashboard() {
     100
   ).toFixed(1);
 
-  // Monthly salary data for the employee
-  const monthlySalaryData = [
-    { month: 'Sep', salary: currentPayslip.netSalary },
-    { month: 'Oct', salary: currentPayslip.netSalary },
-    { month: 'Nov', salary: currentPayslip.netSalary },
-    { month: 'Dec', salary: currentPayslip.netSalary },
-    { month: 'Jan', salary: currentPayslip.netSalary },
-    { month: 'Feb', salary: currentPayslip.netSalary },
-    { month: 'Mar', salary: currentPayslip.netSalary },
-  ];
+  // Monthly salary data dynamically generated for the last 7 months
+  const monthlySalaryData = [];
+  const currentDate = new Date();
+  const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const targetMonthFull = fullMonthNames[d.getMonth()];
+    const targetYear = d.getFullYear();
+    
+    // Check if the employee was actually paid during this month via empirical payslips
+    const foundPayslip = allPayslips.find(p => p.month === targetMonthFull && p.year === targetYear);
+    
+    monthlySalaryData.push({
+      month: shortMonthNames[d.getMonth()],
+      salary: foundPayslip ? foundPayslip.netSalary : 0,
+    });
+  }
 
   const tooltipStyle = {
     backgroundColor: '#27272a',

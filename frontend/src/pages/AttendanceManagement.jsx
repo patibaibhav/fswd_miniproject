@@ -52,11 +52,11 @@ function AttendanceManagement() {
         attendance.map((att) =>
           att.employeeId === currentAttendance.employeeId
             ? {
-                ...att,
-                present: formData.present,
-                absent: formData.absent,
-                leave: formData.leave,
-              }
+              ...att,
+              present: formData.present,
+              absent: formData.absent,
+              leave: formData.leave,
+            }
             : att
         )
       );
@@ -86,7 +86,7 @@ function AttendanceManagement() {
         <p className="page-subtitle">Track and manage employee attendance records</p>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards
       <div className="grid-3">
         <div className="stat-card">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -123,7 +123,7 @@ function AttendanceManagement() {
             </div>
           </div>
         </div>
-      </div>
+      </div> */}
 
       {/* Attendance Table */}
       <div className="card">
@@ -151,8 +151,8 @@ function AttendanceManagement() {
                   Number(attendancePercentage) >= 90
                     ? 'green'
                     : Number(attendancePercentage) >= 75
-                    ? 'amber'
-                    : 'red';
+                      ? 'amber'
+                      : 'red';
                 return (
                   <tr key={att.employeeId}>
                     <td className="td-id">{att.employeeId}</td>
