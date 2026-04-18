@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { DollarSign, Mail, Lock } from 'lucide-react';
+import { api } from '../utils/api';
 import '../styles/LoginPage.css';
 
 function LoginPage() {
@@ -8,13 +9,31 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('admin');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (role === 'admin') {
-      navigate('/admin');
-    } else {
-      navigate('/employee');
+    setError('');
+    setLoading(true);
+
+    try {
+      const data = await api.post('/auth/login', { email, password });
+
+      // Store token and user info
+      localStorage.setItem('token', data.token);
+      localStorage.setItem('user', JSON.stringify(data.user));
+
+      // Navigate based on role
+      if (data.user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/employee');
+      }
+    } catch (err) {
+      setError(err.message || 'Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -76,6 +95,12 @@ function LoginPage() {
           <h2>Login to Your Account</h2>
           <p>Enter your credentials to access the system</p>
 
+          {error && (
+            <div style={{ color: 'var(--danger-light)', background: 'rgba(239,68,68,0.1)', padding: '0.75rem 1rem', borderRadius: 'var(--radius)', marginBottom: '1rem', fontSize: '0.875rem' }}>
+              {error}
+            </div>
+          )}
+
           <form onSubmit={handleLogin} className="login-form">
             <div className="form-group">
               <label className="form-label" htmlFor="role">Login As</label>
@@ -132,8 +157,8 @@ function LoginPage() {
               </button>
             </div>
 
-            <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>
-              Login
+            <button type="submit" className="btn btn-primary" style={{ width: '100%' }} disabled={loading}>
+              {loading ? 'Logging in...' : 'Login'}
             </button>
 
             <div className="demo-box">
@@ -142,6 +167,17 @@ function LoginPage() {
                 <span style={{ color: 'var(--text-white)', fontWeight: 500 }}>
                   admin@company.com / employee@company.com
                 </span>
+                <br />
+                <span style={{ color: 'var(--text-white)', fontWeight: 500 }}>
+                  Password: password123
+                </span>
+              </p>
+            </div>
+
+            <div className="signup-footer" style={{ textAlign: 'center', fontSize: '0.875rem', color: 'var(--text-muted)', paddingTop: '0.25rem' }}>
+              <p>
+                Don't have an account?{' '}
+                <Link to="/signup" className="link-btn" style={{ fontWeight: 600 }}>Sign Up</Link>
               </p>
             </div>
           </form>

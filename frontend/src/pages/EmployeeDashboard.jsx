@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   DollarSign,
   Calendar,
@@ -14,29 +15,97 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from 'recharts';
-import { employees, payslips, attendance } from '../data/mockData';
+import { api } from '../utils/api';
 
 function EmployeeDashboard() {
-  // For demo, we'll use John Doe as the logged-in employee
-  const currentEmployee = employees[0]; // John Doe
-  const currentPayslip = payslips[0];
-  const currentAttendance = attendance[0];
+  const [currentEmployee, setCurrentEmployee] = useState(null);
+  const [currentPayslip, setCurrentPayslip] = useState(null);
+  const [allPayslips, setAllPayslips] = useState([]);
+  const [currentAttendance, setCurrentAttendance] = useState(null);
+  const [leaveBalance, setLeaveBalance] = useState({ remainingDays: 12 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchEmployeeData();
+  }, []);
+
+  const fetchEmployeeData = async () => {
+    try {
+      const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+      // Get employee details
+      let emp;
+      if (user.employeeId) {
+        emp = await api.get(`/employees/by-uuid/${user.employeeId}`);
+      } else {
+        // Fallback: get first employee
+        const allEmps = await api.get('/employees');
+        emp = allEmps[0];
+      }
+      setCurrentEmployee(emp);
+
+      if (emp) {
+        // Fetch payslip and attendance in parallel
+        const [payslips, attendance, leave] = await Promise.all([
+          api.get(`/payslips/employee/${emp.id}`),
+          api.get(`/attendance/employee/${emp.id}?year=2026&month=3`).catch(() => ({
+            totalDays: 22, present: 20, absent: 1, leave: 1,
+          })),
+          api.get(`/dashboard/leave-balance/${emp.id}`).catch(() => ({
+            remainingDays: 12,
+          })),
+        ]);
+
+        setAllPayslips(payslips);
+        setCurrentPayslip(payslips.length > 0 ? payslips[0] : {
+          basicSalary: 0,
+          allowances: 0,
+          grossSalary: 0,
+          deductions: 0,
+          netSalary: 0,
+        });
+        setCurrentAttendance(attendance);
+        setLeaveBalance(leave);
+      }
+    } catch (err) {
+      console.error('Employee dashboard error:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading || !currentEmployee || !currentPayslip || !currentAttendance) {
+    return (
+      <div className="page-container" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '400px' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '1.125rem' }}>Loading your dashboard...</p>
+      </div>
+    );
+  }
 
   const attendancePercentage = (
     (currentAttendance.present / currentAttendance.totalDays) *
     100
   ).toFixed(1);
 
-  // Mock monthly salary data for the employee
-  const monthlySalaryData = [
-    { month: 'Sep', salary: 76500 },
-    { month: 'Oct', salary: 76500 },
-    { month: 'Nov', salary: 76500 },
-    { month: 'Dec', salary: 76500 },
-    { month: 'Jan', salary: 76500 },
-    { month: 'Feb', salary: 76500 },
-    { month: 'Mar', salary: currentPayslip.netSalary },
-  ];
+  // Monthly salary data dynamically generated for the last 7 months
+  const monthlySalaryData = [];
+  const currentDate = new Date();
+  const shortMonthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const fullMonthNames = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+    const targetMonthFull = fullMonthNames[d.getMonth()];
+    const targetYear = d.getFullYear();
+    
+    // Check if the employee was actually paid during this month via empirical payslips
+    const foundPayslip = allPayslips.find(p => p.month === targetMonthFull && p.year === targetYear);
+    
+    monthlySalaryData.push({
+      month: shortMonthNames[d.getMonth()],
+      salary: foundPayslip ? foundPayslip.netSalary : 0,
+    });
+  }
 
   const tooltipStyle = {
     backgroundColor: '#27272a',
@@ -105,7 +174,7 @@ function EmployeeDashboard() {
             </div>
           </div>
           <p className="stat-label">Annual Salary</p>
-          <p className="stat-value">${currentEmployee.salary.toLocaleString()}</p>
+          <p className="stat-value">${Number(currentEmployee.salary).toLocaleString()}</p>
           <p className="stat-note">Base salary</p>
         </div>
 
@@ -127,7 +196,7 @@ function EmployeeDashboard() {
             </div>
           </div>
           <p className="stat-label">Leave Balance</p>
-          <p className="stat-value">12 Days</p>
+          <p className="stat-value">{leaveBalance.remainingDays} Days</p>
           <p className="stat-note">Available</p>
         </div>
       </div>

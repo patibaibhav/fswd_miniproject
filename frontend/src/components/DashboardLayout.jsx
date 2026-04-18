@@ -1,5 +1,5 @@
 import { Outlet, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   Users,
@@ -19,6 +19,27 @@ function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const isAdmin = location.pathname.startsWith('/admin');
 
+  // Get user info from localStorage
+  const [user, setUser] = useState({ name: 'User', position: '' });
+
+  useEffect(() => {
+    const stored = localStorage.getItem('user');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setUser(parsed);
+      } catch {
+        // ignore parse error
+      }
+    }
+
+    // Redirect to login if no token
+    const token = localStorage.getItem('token');
+    if (!token) {
+      navigate('/');
+    }
+  }, [navigate]);
+
   const adminNavItems = [
     { name: 'Dashboard', icon: <LayoutDashboard size={20} />, path: '/admin' },
     { name: 'Employees', icon: <Users size={20} />, path: '/admin/employees' },
@@ -36,6 +57,8 @@ function DashboardLayout() {
   const navItems = isAdmin ? adminNavItems : employeeNavItems;
 
   const handleLogout = () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     navigate('/');
   };
 
@@ -98,7 +121,7 @@ function DashboardLayout() {
                 {isAdmin ? 'Admin Dashboard' : 'Employee Portal'}
               </h2>
               <p className="topbar-subtitle">
-                Welcome back, {isAdmin ? 'Admin' : 'John Doe'}
+                Welcome back, {user.name || (isAdmin ? 'Admin' : 'Employee')}
               </p>
             </div>
           </div>
@@ -109,10 +132,10 @@ function DashboardLayout() {
             </div>
             <div>
               <p className="topbar-user-name">
-                {isAdmin ? 'Admin User' : 'John Doe'}
+                {user.name || (isAdmin ? 'Admin User' : 'Employee')}
               </p>
               <p className="topbar-user-role">
-                {isAdmin ? 'Administrator' : 'Senior Developer'}
+                {user.position || (isAdmin ? 'Administrator' : 'Employee')}
               </p>
             </div>
           </div>
